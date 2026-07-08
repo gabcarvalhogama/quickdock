@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Backups automáticos dos atalhos (gerados pelo build.bat)
+backups/
+
+# Dados locais do usuário (gerados em runtime)
+# Descomente se NÃO quiser versionar seus atalhos:
+# data/
