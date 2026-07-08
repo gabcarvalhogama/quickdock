@@ -338,9 +338,12 @@ apontando para `QuickDock.exe` (ou para `pythonw.exe main.py`).
 
 Além do `.exe` portátil, o projeto inclui um **instalador** (Inno Setup) que
 coloca o QuickDock em **Arquivos de Programas**, cria atalhos no **Menu
-Iniciar** (e, opcional, na Área de Trabalho), registra um **desinstalador**
-(aparece em *Adicionar/Remover programas*) e pode ativar o **início com o
-Windows**.
+Iniciar** (e, opcional, na Área de Trabalho) e registra um **desinstalador**
+(aparece em *Adicionar/Remover programas*).
+
+> O **início com o Windows** é ativado *dentro do app* (menu → *Iniciar com o
+> Windows*), e não pelo instalador — assim a configuração vai sempre para o
+> perfil do usuário correto.
 
 Pré-requisitos:
 

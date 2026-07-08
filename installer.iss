@@ -51,7 +51,6 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar um atalho na Área de Trabalho"; GroupDescription: "Atalhos adicionais:"
-Name: "startupicon"; Description: "Iniciar o QuickDock automaticamente com o Windows"; GroupDescription: "Inicialização:"
 
 [Files]
 Source: "dist\QuickDock.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -61,14 +60,10 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
-[Registry]
-; Início automático (perfil do usuário atual) — só se a tarefa for marcada.
-; Aponta para o mesmo local/chave que a opção "Iniciar com o Windows" do app,
-; então as duas ficam consistentes.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
-    ValueType: string; ValueName: "QuickDock"; \
-    ValueData: """{app}\{#MyAppExeName}"""; \
-    Tasks: startupicon; Flags: uninsdeletevalue
+; Observação: o "Iniciar com o Windows" é feito DENTRO do app (menu → Iniciar
+; com o Windows), que grava na chave Run do usuário atual de forma correta.
+; Evita-se fazer isso aqui porque o instalador roda elevado (admin) e uma
+; gravação em HKCU nesse contexto pode ir para o perfil errado.
 
 [Run]
 ; Oferece abrir o app ao final — rodando como o usuário normal (não elevado).

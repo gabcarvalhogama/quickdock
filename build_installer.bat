@@ -26,6 +26,7 @@ set "ISCC="
 for %%p in (
   "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
   "%ProgramFiles%\Inno Setup 6\ISCC.exe"
+  "%LocalAppData%\Programs\Inno Setup 6\ISCC.exe"
 ) do if exist "%%~p" set "ISCC=%%~p"
 
 if not defined ISCC (
