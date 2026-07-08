@@ -17,11 +17,12 @@ from typing import List, Optional
 
 import customtkinter as ctk
 
-from . import icons, storage
+from . import autostart, icons, storage
 from .actions import ActionExecutor
 from .hotkeys import HotkeyManager
 from .models import ACTION_GROUP, Settings, Shortcut
 from .shortcut_button import ShortcutButton
+from .tray import TrayIcon
 
 # Cor "chave" para transparência das bordas arredondadas.  É improvável de
 # aparecer em qualquer conteúdo visível, evitando halos coloridos.
@@ -42,6 +43,7 @@ class Dock(ctk.CTk):
         self.shortcuts: List[Shortcut] = storage.load_shortcuts()
         self.executor = ActionExecutor(on_error=self._show_error)
         self.hotkeys = HotkeyManager()
+        self.tray = TrayIcon()
 
         self._container: Optional[ctk.CTkFrame] = None
         self._drag_offset = (0, 0)
@@ -68,6 +70,9 @@ class Dock(ctk.CTk):
 
         self.title("QuickDock")
         self.overrideredirect(True)  # sem barra de título -> discreto
+        # esconde durante a montagem: evita "piscar" e permite aplicar o
+        # estilo de janela-ferramenta antes da primeira exibição
+        self.withdraw()
         self._apply_window_attributes()
 
         # cor de fundo da janela = cor-chave -> cantos ficam transparentes
@@ -79,13 +84,21 @@ class Dock(ctk.CTk):
 
         self._build()
         self._apply_geometry()
+        self._hide_from_taskbar()  # roda em segundo plano, sem botão na barra
         self._start_hotkey()
-        self._animate_in()
+        self._start_tray()
 
         # loop de manutenção de baixo custo
         self.after(_TICK_MS, self._tick)
         # salva a posição/estado ao fechar
         self.protocol("WM_DELETE_WINDOW", self.quit_app)
+
+        # exibe a barra (a menos que o usuário queira iniciar só na bandeja)
+        if self.settings.start_hidden and self.tray.available:
+            self._visible = False
+        else:
+            self.deiconify()
+            self._animate_in()
 
     # ================================================================== #
     # Construção da interface
@@ -322,6 +335,21 @@ class Dock(ctk.CTk):
             command=self._toggle_topmost,
         )
         menu.add_separator()
+
+        # rodar em segundo plano (bandeja) e iniciar com o Windows
+        menu.add_checkbutton(
+            label="Iniciar escondido (bandeja)",
+            variable=tk.IntVar(value=int(self.settings.start_hidden)),
+            command=self._toggle_start_hidden,
+            state="normal" if self.tray.available else "disabled",
+        )
+        menu.add_checkbutton(
+            label="Iniciar com o Windows",
+            variable=tk.IntVar(value=int(autostart.is_enabled())),
+            command=self._toggle_autostart,
+            state="normal" if autostart.available() else "disabled",
+        )
+        menu.add_separator()
         menu.add_command(label="Recarregar atalhos", command=self.reload_shortcuts)
         menu.add_command(label="Sair", command=self.quit_app)
 
@@ -373,6 +401,16 @@ class Dock(ctk.CTk):
         self.settings.always_on_top = not self.settings.always_on_top
         self.attributes("-topmost", self.settings.always_on_top)
         storage.save_settings(self.settings)
+
+    def _toggle_start_hidden(self) -> None:
+        self.settings.start_hidden = not self.settings.start_hidden
+        storage.save_settings(self.settings)
+
+    def _toggle_autostart(self) -> None:
+        if not autostart.set_enabled(not autostart.is_enabled()):
+            self._show_error(
+                "Não foi possível alterar o início automático com o Windows."
+            )
 
     # ================================================================== #
     # Recarregar / aplicar mudanças externas (tela de configurações)
@@ -569,17 +607,50 @@ class Dock(ctk.CTk):
     def _restart_hotkey(self) -> None:
         self.hotkeys.register(self.settings.hotkey)
 
+    # ================================================================== #
+    # Bandeja do sistema (rodar em segundo plano)
+    # ================================================================== #
+    def _start_tray(self) -> None:
+        """Inicia o ícone da bandeja (falha silenciosa se ``pystray`` faltar)."""
+        self.tray.start()
+
+    def _handle_tray_command(self, command: str) -> None:
+        """Executa, na thread da UI, um comando vindo do menu da bandeja."""
+        if command == "toggle":
+            self.toggle_visibility()
+        elif command == "search":
+            self.show()
+            self.open_search()
+        elif command == "settings":
+            self.show()
+            self.open_settings()
+        elif command == "quit":
+            self.quit_app()
+
     def toggle_visibility(self) -> None:
-        """Mostra/esconde a barra (usado pelo atalho global)."""
+        """Mostra/esconde a barra (usado pelo atalho global e pela bandeja)."""
         if self._visible:
-            self._close_flyouts()
-            self.withdraw()
-            self._visible = False
+            self.hide()
         else:
-            self.deiconify()
+            self.show()
+
+    def show(self) -> None:
+        """Exibe a barra (se estiver escondida)."""
+        if self._visible:
             self.attributes("-topmost", self.settings.always_on_top)
-            self._visible = True
-            self._animate_in()
+            return
+        self.deiconify()
+        self.attributes("-topmost", self.settings.always_on_top)
+        self._visible = True
+        self._animate_in()
+
+    def hide(self) -> None:
+        """Esconde a barra; o app segue rodando na bandeja do sistema."""
+        if not self._visible:
+            return
+        self._close_flyouts()
+        self.withdraw()
+        self._visible = False
 
     # ================================================================== #
     # Loop de manutenção (hotkey + topmost + auto-hide)
@@ -588,6 +659,12 @@ class Dock(ctk.CTk):
         # 1) atalho global
         if self.hotkeys.drain() > 0:
             self.toggle_visibility()
+
+        # 1b) comandos vindos da bandeja do sistema
+        for command in self.tray.drain():
+            self._handle_tray_command(command)
+            if command == "quit":
+                return  # janela destruída: não reagenda o tick
 
         # 2) reafirma "sempre no topo" (overrideredirect às vezes perde),
         #    exceto quando há diálogos abertos — senão a barra cobriria-os
@@ -724,6 +801,28 @@ class Dock(ctk.CTk):
         except tk.TclError:
             pass
 
+    def _hide_from_taskbar(self) -> None:
+        """Remove o botão da barra de tarefas (janela do tipo *tool window*).
+
+        Garante que o QuickDock rode em segundo plano sem ocupar espaço na
+        barra de tarefas, independentemente de quirks do ``overrideredirect``.
+        Falha silenciosamente fora do Windows.
+        """
+        try:
+            import ctypes
+
+            gwl_exstyle = -20
+            ws_ex_toolwindow = 0x00000080
+            ws_ex_appwindow = 0x00040000
+
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetParent(self.winfo_id()) or self.winfo_id()
+            style = user32.GetWindowLongW(hwnd, gwl_exstyle)
+            style = (style & ~ws_ex_appwindow) | ws_ex_toolwindow
+            user32.SetWindowLongW(hwnd, gwl_exstyle, style)
+        except Exception:  # noqa: BLE001 - fora do Windows ou sem permissão
+            pass
+
     @staticmethod
     def _ctk_mode(theme: str) -> str:
         return {"dark": "Dark", "light": "Light", "system": "System"}.get(theme, "Dark")
@@ -744,4 +843,5 @@ class Dock(ctk.CTk):
         except Exception:  # noqa: BLE001
             pass
         self.hotkeys.stop()
+        self.tray.stop()
         self.destroy()

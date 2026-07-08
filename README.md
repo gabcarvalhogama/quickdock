@@ -28,6 +28,8 @@ uma vez** e **macros** (sequências com espera) com um único clique.
 | Persistência em **JSON** editável à mão | ✅ |
 | Busca rápida de atalhos | ✅ |
 | Atalho global (padrão `Ctrl+Espaço`) para mostrar/esconder | ✅ |
+| **Roda em segundo plano** com ícone na **bandeja do sistema** (sem ocupar a barra de tarefas) | ✅ |
+| **Iniciar com o Windows** e/ou **iniciar escondido** (só na bandeja) | ✅ |
 | Esconder automaticamente na borda | ✅ |
 | Ajuste de transparência | ✅ |
 | Ícone por atalho: **imagem**, **emoji** (seletor com busca) ou **letra** | ✅ |
@@ -55,6 +57,8 @@ QuickDock/
     ├── storage.py              # Persistência em JSON  (PERSISTÊNCIA)
     ├── actions.py              # Execução das ações     (LÓGICA)
     ├── hotkeys.py              # Atalho global de teclado
+    ├── tray.py                 # Ícone na bandeja do sistema (segundo plano)
+    ├── autostart.py            # Iniciar com o Windows (registro)
     ├── icons.py                # Ícones (Pillow + extração via pywin32)
     ├── tooltip.py              # Dica ao passar o mouse
     ├── shortcut_button.py      # Widget de um botão      (INTERFACE)
@@ -117,8 +121,28 @@ atalhos de exemplo (veja *Onde ficam os dados* acima).
 - **Arraste** pela alça `⠿` (topo/esquerda) → move a barra.
 - Botão **⌕** → busca rápida.  Botão **⚙** → configurações.  Botão **⋮** → menu.
 - **Clique direito na alça** → abre o menu completo (orientação, fixar na
-  borda, tema, transparência, esconder automaticamente, bloquear, etc.).
+  borda, tema, transparência, esconder automaticamente, bloquear, iniciar
+  escondido, iniciar com o Windows, etc.).
 - **`Ctrl+Espaço`** (configurável) → mostra/esconde a barra de qualquer lugar.
+
+### Rodar em segundo plano (bandeja do sistema)
+
+O QuickDock **não ocupa um botão na barra de tarefas**: ele vive na **bandeja
+do sistema** (área de notificação, ao lado do relógio). Pelo ícone da bandeja
+você pode:
+
+- **Clique** no ícone → mostra/esconde a barra (mesma ação do `Ctrl+Espaço`).
+- **Clique direito** → menu com *Mostrar/Esconder*, *Busca rápida*,
+  *Configurações* e *Sair*.
+
+No menu (clique direito na alça) há duas opções ligadas ao segundo plano:
+
+- **Iniciar escondido (bandeja):** ao abrir, o app fica só na bandeja; a barra
+  aparece quando você quiser (ícone da bandeja ou `Ctrl+Espaço`).
+- **Iniciar com o Windows:** registra o app para abrir sozinho no login (chave
+  *Run* do usuário atual — não exige administrador).
+
+> Para fechar de vez, use **Sair** (no menu da bandeja ou da alça).
 
 ---
 
@@ -284,6 +308,7 @@ pip install pyinstaller
 pyinstaller --name QuickDock --onefile --noconsole ^
   --hidden-import win32gui --hidden-import win32ui --hidden-import win32con ^
   --collect-all customtkinter ^
+  --collect-submodules pystray ^
   main.py
 ```
 
@@ -299,8 +324,13 @@ Observações:
 
 ### Iniciar junto com o Windows (opcional)
 
-Pressione `Win+R`, digite `shell:startup` e crie um atalho apontando para
-`QuickDock.exe` (ou para `pythonw.exe main.py`).
+O jeito mais fácil é pelo próprio app: **clique direito na alça → “Iniciar com
+o Windows”**. Isso registra o QuickDock na chave *Run* do usuário atual (não
+exige administrador). Combine com **“Iniciar escondido (bandeja)”** para ele
+subir direto em segundo plano.
+
+Alternativa manual: pressione `Win+R`, digite `shell:startup` e crie um atalho
+apontando para `QuickDock.exe` (ou para `pythonw.exe main.py`).
 
 ---
 
@@ -310,10 +340,14 @@ Pressione `Win+R`, digite `shell:startup` e crie um atalho apontando para
 - [Pillow](https://python-pillow.org/) — ícones e avatares
 - [pywin32](https://github.com/mhammond/pywin32) — extração de ícones nativos
 - [keyboard](https://github.com/boppreh/keyboard) — atalho global
+- [pystray](https://github.com/moses-palmer/pystray) — ícone na bandeja do sistema
 
 > O atalho global depende da biblioteca `keyboard`. Se ela não estiver
 > disponível (ou faltar permissão), o app continua funcionando normalmente,
 > apenas sem o atalho global — o restante da interface segue operante.
+>
+> Da mesma forma, o ícone da bandeja depende de `pystray`: se faltar, o app
+> ainda abre (a barra fica visível normalmente), apenas sem o ícone na bandeja.
 
 ---
 
@@ -325,9 +359,12 @@ Pressione `Win+R`, digite `shell:startup` e crie um atalho apontando para
 | Cantos não ficam transparentes | Alguns drivers/ambientes não suportam `-transparentcolor`; a barra funciona mesmo assim (cantos retos). |
 | Ícone do programa não aparece | Nem todo arquivo tem ícone embutido; será usado um avatar com a inicial. Você pode definir uma imagem manualmente. |
 | Editei o JSON e não mudou | Use *Menu (⋮/clique direito) → Recarregar atalhos*. |
+| Ícone não aparece na bandeja | Instale a dependência `pystray` (`pip install -r requirements.txt`); no `.exe`, gere com o `build.bat` atualizado (`--collect-submodules pystray`). O ícone pode estar oculto no “estouro” da bandeja (seta ˄) — arraste-o para fixá-lo. |
+| Some da barra de tarefas mas não sei acessar | É o comportamento esperado (segundo plano). Use o ícone da bandeja ou `Ctrl+Espaço`. |
 
 ---
 
 ## 📄 Licença
 
-Uso livre. Adapte à vontade.
+Distribuído sob a licença **MIT** — uso livre, inclusive comercial. Veja o
+arquivo [`LICENSE`](LICENSE).

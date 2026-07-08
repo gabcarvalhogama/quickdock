@@ -184,6 +184,7 @@ class Settings:
     label_position: str = "none"       # rótulo: "none" | "side" | "below"
     corner_radius: int = 18            # raio das bordas arredondadas
     always_on_top: bool = True         # manter sempre acima
+    start_hidden: bool = False         # iniciar escondido (só na bandeja)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

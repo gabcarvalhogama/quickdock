@@ -54,6 +54,7 @@ pyinstaller ^
   --hidden-import win32ui ^
   --hidden-import win32con ^
   --collect-all customtkinter ^
+  --collect-submodules pystray ^
   main.py
 if errorlevel 1 goto :erro
 
