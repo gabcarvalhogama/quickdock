@@ -334,6 +334,41 @@ apontando para `QuickDock.exe` (ou para `pythonw.exe main.py`).
 
 ---
 
+## 📦 Gerar o instalador (`QuickDockSetup.exe`)
+
+Além do `.exe` portátil, o projeto inclui um **instalador** (Inno Setup) que
+coloca o QuickDock em **Arquivos de Programas**, cria atalhos no **Menu
+Iniciar** (e, opcional, na Área de Trabalho), registra um **desinstalador**
+(aparece em *Adicionar/Remover programas*) e pode ativar o **início com o
+Windows**.
+
+Pré-requisitos:
+
+1. **Inno Setup 6** — https://jrsoftware.org/isdl.php
+   (ou pelo terminal: `winget install JRSoftware.InnoSetup`).
+2. O executável já compilado (`dist\QuickDock.exe`).
+
+Passos:
+
+```bat
+:: 1) compile o executável (feche o QuickDock antes!)
+build.bat
+
+:: 2) empacote no instalador
+build_installer.bat
+```
+
+O resultado sai em **`dist\installer\QuickDockSetup.exe`** — é esse arquivo que
+você distribui (por exemplo, anexando em um *Release* do GitHub).
+
+- Instala em `C:\Program Files\QuickDock` (pede permissão de administrador).
+- Seus **dados continuam em `%APPDATA%\QuickDock`** — desinstalar **não apaga**
+  seus atalhos, e atualizar (reinstalar por cima) os preserva.
+- A configuração do instalador fica em [`installer.iss`](installer.iss); o
+  `AppId` (GUID) identifica o produto entre versões e **não deve ser alterado**.
+
+---
+
 ## 🧩 Dependências
 
 - [customtkinter](https://github.com/TomSchimansky/CustomTkinter) — interface moderna
